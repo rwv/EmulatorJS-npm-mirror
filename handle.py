@@ -5,6 +5,9 @@ import zipfile
 import os
 import shutil
 import json
+import glob
+import hashlib
+import base64
 
 # get arguments from command line
 commit = sys.argv[1]
@@ -65,3 +68,32 @@ with open(package_json, "r") as f:
     data["version"] = semver_commit
     with open(package_json, "w") as f2:
         json.dump(data, f2, indent=2)
+
+# recursively get files
+print("recursively getting files")
+files = glob.glob("./EmulatorJS/**/*", recursive=True)
+print("files count: " + str(len(files)))
+
+sri = {}
+for file in files:
+    if os.path.isdir(file):
+        continue
+    with open(file, "rb") as f:
+        content = f.read()
+
+        # Calculate sha256
+        sha256 = hashlib.sha256(content).digest()
+        sha256Base64 = base64.b64encode(sha256).decode('utf-8').strip()
+
+        # Add to sri
+        sri[file[2:]] = "sha256-" + sha256Base64
+
+sri_result = {
+    "version": semver_commit,
+    "sri": sri
+}
+
+# write sri.json
+print("writing sri.json")
+with open("./sri.json", "w") as f:
+    json.dump(sri_result, f, indent=2)
